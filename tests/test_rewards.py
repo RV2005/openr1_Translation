@@ -7,6 +7,7 @@ from open_r1.rewards import (
     get_repetition_penalty_reward,
     len_reward,
     reasoning_steps_reward,
+    bleu_reward,
 )
 
 
@@ -179,6 +180,17 @@ class TestRewards(unittest.TestCase):
         rewards = len_reward(completions, solutions)
         self.assertGreater(rewards[0], rewards[1])  # shorter answer should still get better reward
         self.assertAlmostEqual(rewards[0], 0.5)  # treated as correct, shortest gets maximum reward
+
+    def test_bleu_reward(self):
+        completions = [[{"content": "The cat is on the mat"}]]
+        solution = ["The cat is on the mat"]
+        rewards = bleu_reward(completions, solution)
+        self.assertEqual(rewards, [1.0])
+
+        completions = [[{"content": "The cat is on the mat"}]]
+        solution = ["The cat is under the mat"]
+        rewards = bleu_reward(completions, solution)
+        self.assertLess(rewards[0], 1.0)
 
 
 class TestRepetitionPenaltyReward(unittest.TestCase):

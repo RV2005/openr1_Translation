@@ -3,7 +3,8 @@
 import math
 import re
 from typing import Dict
-import evaluate
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+import warnings
 
 from latex2sympy2_extended import NormalizationConfig
 from math_verify import LatexExtractionConfig, parse, verify
@@ -13,15 +14,41 @@ def bleu_reward(completions, solution, **kwargs):
     """Reward function that computes BLEU score between the completion and the ground truth."""
 
     contents = [completion[0]["content"] for completion in completions]
-    bleu = evaluate.load("bleu")
+
+    # bleu = evaluate.load("bleu")
     rewards = []
     for content, sol in zip(contents, solution): 
-        results = bleu.compute(predictions = [content], references = [sol])
-        reward = results["bleu"]
+        c_split = content.split()
+        s_split = sol.split()
+
+        # Try to compute BLEU score, but catch warnings and hard check if the content is the same as the solution
+        with warnings.catch_warnings(action="error"):
+            # warnings.filterwarnings('error')
+            try: 
+                reward = sentence_bleu([s_split], c_split)*2-1
+            except UserWarning as e: 
+                if(content == sol): 
+                    reward = 1.0
+                else:
+                    reward = 0.0                
+
         rewards.append(reward)
 
     return rewards
 
+
+def test_bleu_reward():
+    completions = [[{"content": "The cat is on the mat"}]]
+    solution = ["The cat is on the mat"]
+    rewards = bleu_reward(completions, solution)
+    print(rewards[0] == 1.0)
+
+    completions = [[{"content": "The cat is on the mat"}]]
+    solution = ["The cat is under the mat"]
+    rewards = bleu_reward(completions, solution, weights = (0.5, 0.5))
+    print(rewards[0] < 1.0)
+
+# test_bleu_reward()
 
 def accuracy_reward(completions, solution, **kwargs):
     """Reward function that checks if the completion is the same as the ground truth."""
