@@ -26,6 +26,7 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from open_r1.configs import GRPOConfig
 from open_r1.rewards import (
+    bleu_reward,
     accuracy_reward,
     format_reward,
     get_cosine_scaled_reward,
@@ -62,9 +63,9 @@ class GRPOScriptArguments(ScriptArguments):
     """
 
     reward_funcs: list[str] = field(
-        default_factory=lambda: ["accuracy", "format"],
+        default_factory=lambda: ["bleu"],
         metadata={
-            "help": "List of reward functions. Possible values: 'accuracy', 'format', 'reasoning_steps', 'cosine', 'repetition_penalty', 'length'"
+            "help": "List of reward functions. Possible values: 'bleu', 'accuracy', 'format', 'reasoning_steps', 'cosine', 'repetition_penalty', 'length'"
         },
     )
     cosine_min_value_wrong: float = field(
@@ -109,7 +110,7 @@ SYSTEM_PROMPT = (
 def main(script_args, training_args, model_args):
     # Set seed for reproducibility
     set_seed(training_args.seed)
-
+    RAG = False
     ###############
     # Setup logging
     ###############
@@ -149,6 +150,7 @@ def main(script_args, training_args, model_args):
 
     # Get reward functions
     REWARD_FUNCS_REGISTRY = {
+        "bleu": bleu_reward,
         "accuracy": accuracy_reward,
         "format": format_reward,
         "reasoning_steps": reasoning_steps_reward,
@@ -166,20 +168,73 @@ def main(script_args, training_args, model_args):
         "length": len_reward,
     }
     reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
+    print("Using reward functions:", script_args.reward_funcs)
 
-    # Format into conversation
-    def make_conversation(example):
-        return {
-            "prompt": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": example["problem"]},
-            ],
-        }
+    # Creating Conversation for Translation task ========================
 
-    dataset = dataset.map(make_conversation)
-    for split in dataset:
-        if "messages" in dataset[split].column_names:
-            dataset[split] = dataset[split].remove_columns("messages")
+    system_message_fr_to_mo = "Tu es un traducteur du français vers le monégasque. Un utilisateur va donner des mots ou phrases en français. Ta mission est de les traduire en monégasque."
+    system_message_mo_to_fr = "Tu es un traducteur du monégasque vers le français. Un utilisateur va donner des mots ou phrases en monégasque. Ta mission est de les traduire en français."
+
+    params_fr_to_mo = {"sys_message": system_message_fr_to_mo,
+                "source_language": "français", "target_language": "monégasque",
+                "source_col": "fra_Latn", "target_col": "mon_Latn",
+                    "direction":"fr_to_mo"}
+    params_mo_to_fr = {"sys_message": system_message_mo_to_fr,
+                "source_language": "monégasque", "target_language": "français",
+                "source_col": "mon_Latn", "target_col": "fra_Latn",
+                    "direction":"mo_to_fr"}
+    
+    if RAG:
+        RAG_k = 10
+        def create_conversation(sample):
+            if sample["direction"] == "fr_to_mo":
+                params = params_fr_to_mo
+            else:
+                params = params_mo_to_fr
+
+            # examples = "\n".join([f"{params['source_language']}:\n{target_dataset[params['source_col']][i]}\n{params['target_language']}:\n{target_dataset[params['target_col']][i]}\n"
+            #                      for i in top_indices])
+            messages = [{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n"}]
+            for i in range(RAG_k):
+                messages += [{"role": "user", "content": sample["_".join(["rag", params['source_language'][:2], str(i+1)])]},
+                {"role": "assistant", "content": sample["_".join(["rag", params['target_language'][:2], str(i+1)])]}
+                            ]
+
+            return {
+            "messages": messages + [
+                #{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n" + examples + "\n"},
+                {"role": "user", "content": sample[params['source_col']]},
+                {"role": "assistant", "content": sample[params['target_col']]}
+                ]
+            }
+
+    else:
+
+        def create_conversation(sample):
+            if sample["direction"] == "fr_to_mo":
+                return {
+                "messages": [
+                    {"role": "system", "content": system_message_fr_to_mo + "\n"},
+                    {"role": "user", "content": sample["fra_Latn"]},
+                    {"role": "assistant", "content": sample["mon_Latn"]},
+                    ]
+                }
+            else:
+                return {
+                "messages": [
+                    {"role": "system", "content": system_message_mo_to_fr + "\n"},
+                    {"role": "user", "content": sample["mon_Latn"]},
+                    {"role": "assistant", "content": sample["fra_Latn"]},
+                    ]
+                }
+
+    dataset = dataset.map(create_conversation)
+    # TODO: Check this
+    # for split in dataset:
+    #     if "messages" in dataset[split].column_names:
+    #         dataset[split] = dataset[split].remove_columns("messages")
+
+    # ====================================================================
 
     logger.info("*** Initializing model kwargs ***")
     torch_dtype = (

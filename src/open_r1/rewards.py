@@ -3,9 +3,24 @@
 import math
 import re
 from typing import Dict
+import evaluate
 
 from latex2sympy2_extended import NormalizationConfig
 from math_verify import LatexExtractionConfig, parse, verify
+
+#TODO: TEST THIS
+def bleu_reward(completions, solution, **kwargs):
+    """Reward function that computes BLEU score between the completion and the ground truth."""
+
+    contents = [completion[0]["content"] for completion in completions]
+    bleu = evaluate.load("bleu")
+    rewards = []
+    for content, sol in zip(contents, solution): 
+        results = bleu.compute(predictions = [content], references = [sol])
+        reward = results["bleu"]
+        rewards.append(reward)
+
+    return rewards
 
 
 def accuracy_reward(completions, solution, **kwargs):
