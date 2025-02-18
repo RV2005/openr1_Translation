@@ -307,7 +307,9 @@ def main(script_args, training_args, model_args, dataset=None):
         torch_dtype=torch_dtype,
         use_cache=False if training_args.gradient_checkpointing else True,
     )
-    training_args.model_init_kwargs = model_kwargs
+    
+    # TODO: Change Back? 
+    #training_args.model_init_kwargs = model_kwargs
 
     #############################
     # Initialize the GRPO trainer
