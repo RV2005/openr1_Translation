@@ -107,7 +107,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def main(script_args, training_args, model_args):
+def main(script_args, training_args, model_args, dataset=None):
     # Set seed for reproducibility
     set_seed(training_args.seed)
     RAG = False
@@ -146,7 +146,7 @@ def main(script_args, training_args, model_args):
         init_wandb_training(training_args)
 
     # Load the dataset
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config) if dataset is None else dataset
 
     # Get reward functions
     REWARD_FUNCS_REGISTRY = {
@@ -171,6 +171,10 @@ def main(script_args, training_args, model_args):
     print("Using reward functions:", script_args.reward_funcs)
 
     # Creating Conversation for Translation task ========================
+    df_train = dataset.to_pandas()
+    df_train = df_train.loc[[i//2 for i in range(2*len(df_train))]]
+    df_train["direction"] = ["fr_to_mo", "mo_to_fr"]*(len(df_train)//2)
+    dataset = datasets.Dataset.from_pandas(df_train)
 
     system_message_fr_to_mo = "Tu es un traducteur du français vers le monégasque. Un utilisateur va donner des mots ou phrases en français. Ta mission est de les traduire en monégasque."
     system_message_mo_to_fr = "Tu es un traducteur du monégasque vers le français. Un utilisateur va donner des mots ou phrases en monégasque. Ta mission est de les traduire en français."
