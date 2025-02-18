@@ -18,9 +18,9 @@ vllm_device: auto
 vllm_gpu_memory_utilization: 0.7
 
 # TODO: Recheck for eval
-do_eval: false
-eval_strategy: no
-eval_steps: 100
+# do_eval: true
+# eval_strategy: steps
+# eval_steps: 100
 
 gradient_accumulation_steps: 16
 gradient_checkpointing: true
