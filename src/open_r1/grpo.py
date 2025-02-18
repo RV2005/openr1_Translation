@@ -171,7 +171,7 @@ def main(script_args, training_args, model_args, dataset=None):
     print("Using reward functions:", script_args.reward_funcs)
 
     # Creating Conversation for Translation task ========================
-    df_train = dataset.to_pandas()
+    df_train = dataset["train"].to_pandas()
     df_train = df_train.loc[[i//2 for i in range(2*len(df_train))]]
     df_train["direction"] = ["fr_to_mo", "mo_to_fr"]*(len(df_train)//2)
     dataset = datasets.Dataset.from_pandas(df_train)
