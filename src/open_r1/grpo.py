@@ -170,69 +170,69 @@ def main(script_args, training_args, model_args, dataset=None):
     reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
     print("Using reward functions:", script_args.reward_funcs)
 
-    # Creating Conversation for Translation task ========================
-    df_train = dataset["train"].to_pandas()
-    df_train = df_train.loc[[i//2 for i in range(2*len(df_train))]]
-    df_train["direction"] = ["fr_to_mo", "mo_to_fr"]*(len(df_train)//2)
-    dataset = datasets.Dataset.from_pandas(df_train)
+    # # Creating Conversation for Translation task ========================
+    # df_train = dataset["train"].to_pandas()
+    # df_train = df_train.loc[[i//2 for i in range(2*len(df_train))]]
+    # df_train["direction"] = ["fr_to_mo", "mo_to_fr"]*(len(df_train)//2)
+    # dataset = datasets.Dataset.from_pandas(df_train)
 
-    system_message_fr_to_mo = "Tu es un traducteur du français vers le monégasque. Un utilisateur va donner des mots ou phrases en français. Ta mission est de les traduire en monégasque."
-    system_message_mo_to_fr = "Tu es un traducteur du monégasque vers le français. Un utilisateur va donner des mots ou phrases en monégasque. Ta mission est de les traduire en français."
+    # system_message_fr_to_mo = "Tu es un traducteur du français vers le monégasque. Un utilisateur va donner des mots ou phrases en français. Ta mission est de les traduire en monégasque."
+    # system_message_mo_to_fr = "Tu es un traducteur du monégasque vers le français. Un utilisateur va donner des mots ou phrases en monégasque. Ta mission est de les traduire en français."
 
-    params_fr_to_mo = {"sys_message": system_message_fr_to_mo,
-                "source_language": "français", "target_language": "monégasque",
-                "source_col": "fra_Latn", "target_col": "mon_Latn",
-                    "direction":"fr_to_mo"}
-    params_mo_to_fr = {"sys_message": system_message_mo_to_fr,
-                "source_language": "monégasque", "target_language": "français",
-                "source_col": "mon_Latn", "target_col": "fra_Latn",
-                    "direction":"mo_to_fr"}
+    # params_fr_to_mo = {"sys_message": system_message_fr_to_mo,
+    #             "source_language": "français", "target_language": "monégasque",
+    #             "source_col": "fra_Latn", "target_col": "mon_Latn",
+    #                 "direction":"fr_to_mo"}
+    # params_mo_to_fr = {"sys_message": system_message_mo_to_fr,
+    #             "source_language": "monégasque", "target_language": "français",
+    #             "source_col": "mon_Latn", "target_col": "fra_Latn",
+    #                 "direction":"mo_to_fr"}
     
-    if RAG:
-        RAG_k = 10
-        def create_conversation(sample):
-            if sample["direction"] == "fr_to_mo":
-                params = params_fr_to_mo
-            else:
-                params = params_mo_to_fr
+    # if RAG:
+    #     RAG_k = 10
+    #     def create_conversation(sample):
+    #         if sample["direction"] == "fr_to_mo":
+    #             params = params_fr_to_mo
+    #         else:
+    #             params = params_mo_to_fr
 
-            # examples = "\n".join([f"{params['source_language']}:\n{target_dataset[params['source_col']][i]}\n{params['target_language']}:\n{target_dataset[params['target_col']][i]}\n"
-            #                      for i in top_indices])
-            messages = [{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n"}]
-            for i in range(RAG_k):
-                messages += [{"role": "user", "content": sample["_".join(["rag", params['source_language'][:2], str(i+1)])]},
-                {"role": "assistant", "content": sample["_".join(["rag", params['target_language'][:2], str(i+1)])]}
-                            ]
+    #         # examples = "\n".join([f"{params['source_language']}:\n{target_dataset[params['source_col']][i]}\n{params['target_language']}:\n{target_dataset[params['target_col']][i]}\n"
+    #         #                      for i in top_indices])
+    #         messages = [{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n"}]
+    #         for i in range(RAG_k):
+    #             messages += [{"role": "user", "content": sample["_".join(["rag", params['source_language'][:2], str(i+1)])]},
+    #             {"role": "assistant", "content": sample["_".join(["rag", params['target_language'][:2], str(i+1)])]}
+    #                         ]
 
-            return {
-            "messages": messages + [
-                #{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n" + examples + "\n"},
-                {"role": "user", "content": sample[params['source_col']]},
-                {"role": "assistant", "content": sample[params['target_col']]}
-                ]
-            }
+    #         return {
+    #         "messages": messages + [
+    #             #{"role": "system", "content": params['sys_message'] + " Voici quelques exemples:\n" + examples + "\n"},
+    #             {"role": "user", "content": sample[params['source_col']]},
+    #             {"role": "assistant", "content": sample[params['target_col']]}
+    #             ]
+    #         }
 
-    else:
+    # else:
 
-        def create_conversation(sample):
-            if sample["direction"] == "fr_to_mo":
-                return {
-                "messages": [
-                    {"role": "system", "content": system_message_fr_to_mo + "\n"},
-                    {"role": "user", "content": sample["fra_Latn"]},
-                    {"role": "assistant", "content": sample["mon_Latn"]},
-                    ]
-                }
-            else:
-                return {
-                "messages": [
-                    {"role": "system", "content": system_message_mo_to_fr + "\n"},
-                    {"role": "user", "content": sample["mon_Latn"]},
-                    {"role": "assistant", "content": sample["fra_Latn"]},
-                    ]
-                }
+    #     def create_conversation(sample):
+    #         if sample["direction"] == "fr_to_mo":
+    #             return {
+    #             "messages": [
+    #                 {"role": "system", "content": system_message_fr_to_mo + "\n"},
+    #                 {"role": "user", "content": sample["fra_Latn"]},
+    #                 {"role": "assistant", "content": sample["mon_Latn"]},
+    #                 ]
+    #             }
+    #         else:
+    #             return {
+    #             "messages": [
+    #                 {"role": "system", "content": system_message_mo_to_fr + "\n"},
+    #                 {"role": "user", "content": sample["mon_Latn"]},
+    #                 {"role": "assistant", "content": sample["fra_Latn"]},
+    #                 ]
+    #             }
 
-    dataset = dataset.map(create_conversation)
+    # dataset = dataset.map(create_conversation)
     # TODO: Check this
     # for split in dataset:
     #     if "messages" in dataset[split].column_names:
