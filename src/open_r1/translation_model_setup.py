@@ -15,7 +15,7 @@ def create_model_for_translation():
         max_seq_length = max_seq_length,
         dtype = dtype,
         load_in_4bit = load_in_4bit,
-        # token = "hf_...", # use one if using gated models like meta-llama/Llama-2-7b-hf
+        offload_buffers=True
     )
 
 
