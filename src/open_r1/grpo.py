@@ -254,7 +254,7 @@ def main(script_args, training_args, model_args, dataset=None):
     )
     
     # TODO: Change Back? 
-    #training_args.model_init_kwargs = model_kwargs
+    training_args.model_init_kwargs = model_kwargs
 
     #############################
     # Initialize the GRPO trainer
