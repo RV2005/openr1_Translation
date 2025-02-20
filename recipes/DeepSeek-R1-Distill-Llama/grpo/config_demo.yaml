@@ -12,7 +12,7 @@ dataset_configs:
 num_processes: 1
 
 # GRPO trainer config
-bf16: true
+bf16: false # true
 use_vllm: true
 vllm_device: auto
 vllm_gpu_memory_utilization: 0.7
