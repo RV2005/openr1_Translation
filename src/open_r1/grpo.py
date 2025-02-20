@@ -23,7 +23,7 @@ import transformers
 from datasets import load_dataset
 from transformers import set_seed
 from transformers.trainer_utils import get_last_checkpoint
-# from translation_model_setup import create_model_for_translation
+from translation_model_setup import create_model_for_translation
 
 from open_r1.configs import GRPOConfig
 from open_r1.rewards import (
@@ -254,14 +254,14 @@ def main(script_args, training_args, model_args, dataset=None):
     )
     
     # TODO: Change Back? 
-    training_args.model_init_kwargs = model_kwargs
+    # training_args.model_init_kwargs = model_kwargs
 
     #############################
     # Initialize the GRPO trainer
     #############################
     #TODO: Check if the custom creation is needed
     trainer = GRPOTrainer(
-        model= model_args.model_name_or_path,
+        model=  create_model_for_translation(), # model_args.model_name_or_path,
         reward_funcs=reward_funcs,
         args=training_args,
         train_dataset=dataset[script_args.dataset_train_split],
